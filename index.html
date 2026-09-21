@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>THE BACKROOMS: LEVEL 0 // ARCHIVAL FOOTAGE</title>
+  <meta name="description" content="Explore The Backrooms 3D through an authentic 90s VHS camcorder perspective. Atmospheric horror and pure immersion.">
+  
+  <!-- Google Fonts: Share Tech Mono (Authentic VHS OSD), Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <!-- WebGL 3D Canvas -->
+  <canvas id="webgl-canvas"></canvas>
+
+  <!-- Fullscreen VHS Effect Overlays -->
+  <div id="vhs-screen-overlay">
+    <div class="vhs-scanlines"></div>
+    <div class="vhs-noise"></div>
+    <div class="vhs-vignette"></div>
+  </div>
+
+  <!-- Fullscreen Blinding White Flash for No-clip Warp -->
+  <div id="white-flash" class="white-flash"></div>
+
+  <!-- Camcorder Pure Diegetic HUD (Only Authentic Corner Telemetry) -->
+  <div id="camcorder-hud" class="hidden">
+    <!-- Top Left: REC indicator -->
+    <div class="hud-top-left">
+      <div class="hud-rec">
+        <span class="rec-dot"></span>
+        <span class="rec-text">REC</span>
+        <span class="rec-speed">SP</span>
+      </div>
+    </div>
+
+    <!-- Top Right: Clean Battery Meter -->
+    <div class="hud-top-right">
+      <div class="hud-battery">
+        <span class="battery-label">BATT</span>
+        <div class="battery-icon">
+          <div class="battery-level" id="battery-level"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Right: Date and Running Timecode -->
+    <div class="hud-bottom-right">
+      <div class="hud-timecode" id="tape-timecode">00:00:00</div>
+      <div class="hud-date" id="tape-date">JUL 04 1996 - PM 11:42:08</div>
+    </div>
+
+    <!-- Threat / Glitch Danger Vignette -->
+    <div id="danger-vignette" class="danger-vignette"></div>
+  </div>
+
+  <!-- 1. Minimalist & Raw Intro Screen: Found Footage Title -->
+  <div id="intro-screen" class="intro-screen">
+    <div class="intro-content">
+      <div class="intro-tag">ARCHIVAL TAPE // ASYNC RESEARCH REPORT</div>
+      <h1 class="intro-title">THE BACKROOMS</h1>
+      <p class="intro-subtitle">LEVEL 0: RECONNAISSANCE</p>
+      
+      <div class="intro-prompt">
+        <span class="prompt-cursor">▶</span>
+        <span class="prompt-text">CLICK ANYWHERE TO ENTER FOOTAGE</span>
+      </div>
+
+      <div class="intro-hints">
+        <span>WASD: MOVE</span>
+        <span>•</span>
+        <span>MOUSE: LOOK (360°)</span>
+        <span>•</span>
+        <span>SHIFT: SPRINT</span>
+        <span>•</span>
+        <span>F: FLASHLIGHT</span>
+        <span>•</span>
+        <span>H / ESC: RESEARCH ARCHIVE</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Game Over Screen: Tape Rewind [SIGNAL LOST] -->
+  <div id="rewind-screen" class="rewind-screen hidden">
+    <div class="rewind-noise"></div>
+    <div class="rewind-content">
+      <div class="vcr-blue-header">[ NO SIGNAL ]</div>
+      <div class="vcr-blue-body">
+        <h2 class="lost-title">SIGNAL LOST</h2>
+        <div class="rewind-indicator">
+          <span class="rewind-arrows">◀◀</span>
+          <span class="rewind-text">REWINDING TAPE...</span>
+        </div>
+        <div class="rewind-meter">
+          <div id="rewind-bar" class="rewind-bar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Pause Overlay (Shown when user presses ESC and pointer unlocks) -->
+  <div id="pause-overlay" class="pause-overlay hidden">
+    <div class="pause-box" onclick="event.stopPropagation()">
+      <div class="pause-tag">[ PAUSED ]</div>
+      <div class="pause-prompt" id="pause-resume-click">CLICK HERE TO RESUME</div>
+      <div class="sensitivity-box">
+        <label for="pause-sens-slider">MOUSE SENSITIVITY: <span id="pause-sens-val">2.4</span></label>
+        <input type="range" id="pause-sens-slider" min="0.5" max="5.0" step="0.1" value="2.4">
+      </div>
+      <div class="pause-subtext">PRESS [H] FOR RESEARCH ARCHIVE & CONTROLS</div>
+    </div>
+  </div>
+
+  <!-- 4. Research Dossier / Help Modal (ESC / H) - 100% Fullscreen Camcorder Viewfinder -->
+  <div id="help-modal" class="fullscreen-vhs-viewfinder fullscreen-help-viewfinder hidden">
+    <!-- Fullscreen Analog Static Grain & Scanlines -->
+    <div class="fullscreen-vhs-grain"></div>
+    <div class="fullscreen-scanlines"></div>
+    <div class="fullscreen-vignette"></div>
+
+    <!-- 4 Viewfinder Corner Reticles -->
+    <div class="osd-corner osd-corner-tl">┌</div>
+    <div class="osd-corner osd-corner-tr">┐</div>
+    <div class="osd-corner osd-corner-bl">└</div>
+    <div class="osd-corner osd-corner-br">┘</div>
+
+    <!-- Top OSD Telemetry Bar -->
+    <div class="osd-header-bar help-header-bar">
+      <div class="osd-header-left">
+        <span class="osd-tape-state">PAUSE ❚❚</span>
+        <span class="osd-pipe">|</span>
+        <span class="osd-tape-msg">CH 03 // ARCHIVE DOSSIER</span>
+      </div>
+      <div class="osd-header-right">
+        <span class="osd-mode-badge">REC SPEED: SP</span>
+        <span class="osd-date-stamp">JUL 04 1996</span>
+      </div>
+    </div>
+
+    <!-- Center Stage: Directive & Controls -->
+    <div class="osd-center-stage help-center-stage">
+      <div class="help-section-directive">
+        <div class="help-section-title">DIRECTIVE: SURVIVAL & EXTRACTION</div>
+        <p class="help-desc">
+          You are equipped with a field camcorder inside the damp mono-yellow labyrinth <em>(Level 0: The Lobby)</em>. 
+          An anomalous aggressive entity, <strong>The Bacteria</strong>, actively stalks the corridors in darkness.
+        </p>
+        <div class="help-protocol-box">
+          <strong>EXTRACTION PROTOCOL:</strong> Locate anomalous distorted architecture <em>(No-Clip Wall)</em>. 
+          Camcorder telemetry will violently vibrate and encounter heavy tracking interference near the rift. Walk directly into the wall to no-clip into 
+          <strong>The Poolrooms (Level 37)</strong>.
+        </div>
+      </div>
+
+      <div class="help-section-controls">
+        <div class="help-section-title">CONTROL MATRIX</div>
+        <div class="help-controls-grid">
+          <div class="help-ctrl-card"><span class="ctrl-key">[ W A S D ]</span> <span class="ctrl-label">MOVE / STRAFE</span></div>
+          <div class="help-ctrl-card"><span class="ctrl-key">[ MOUSE ]</span> <span class="ctrl-label">LOOK (1:1 RAW FPS)</span></div>
+          <div class="help-ctrl-card"><span class="ctrl-key">[ SHIFT ]</span> <span class="ctrl-label">HOLD TO SPRINT</span></div>
+          <div class="help-ctrl-card"><span class="ctrl-key">[ F ]</span> <span class="ctrl-label">TOGGLE FLASHLIGHT</span></div>
+          <div class="help-ctrl-card"><span class="ctrl-key">[ H / ESC ]</span> <span class="ctrl-label">TOGGLE DOSSIER</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Bar: Bottom-Center Flashing Resume + Bottom-Right OSD Sensitivity Settings -->
+    <div class="osd-bottom-bar help-bottom-bar">
+      <div class="help-bottom-left-dummy"></div>
+
+      <!-- Bottom Center Flashing Resume Prompt -->
+      <div class="flashing-prompts-group">
+        <div id="btn-resume-game" class="flashing-osd-prompt prompt-resume" role="button" tabindex="0">
+          <span class="prompt-bracket">[</span> PRESS ESC / H OR CLICK TO RESUME FOOTAGE <span class="prompt-bracket">]</span>
+        </div>
+        <button id="btn-close-modal" style="display:none;" aria-hidden="true"></button>
+      </div>
+
+      <!-- Bottom Right: OSD Sensitivity Calibration Module -->
+      <div class="osd-settings-box">
+        <div class="settings-title">OSD CALIBRATION // MOUSE SENSITIVITY</div>
+        <div class="settings-slider-row">
+          <span class="sens-scale-label">LOW</span>
+          <input type="range" id="modal-sens-slider" min="0.5" max="5.0" step="0.1" value="2.4">
+          <span class="sens-scale-label">HIGH</span>
+          <span id="modal-sens-val" class="settings-val-badge">2.4</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Death Screen: 100% Fullscreen Corrupted Camcorder Viewfinder -->
+  <div id="death-screen" class="fullscreen-vhs-viewfinder fullscreen-death-viewfinder hidden">
+    <!-- Fullscreen Analog Static Grain & Scanlines -->
+    <div class="fullscreen-vhs-grain"></div>
+    <div class="fullscreen-scanlines"></div>
+    <div class="fullscreen-vignette"></div>
+
+    <!-- 4 Viewfinder Corner Reticles -->
+    <div class="osd-corner osd-corner-tl">┌</div>
+    <div class="osd-corner osd-corner-tr">┐</div>
+    <div class="osd-corner osd-corner-bl">└</div>
+    <div class="osd-corner osd-corner-br">┘</div>
+
+    <!-- Top OSD Telemetry Bar -->
+    <div class="osd-header-bar osd-danger-header">
+      <div class="osd-header-left">
+        <span class="osd-tape-state">STOP ■</span>
+        <span class="osd-pipe">|</span>
+        <span class="osd-tape-msg">SIGNAL TERMINATED // TAPE CORRUPTED</span>
+      </div>
+      <div class="osd-header-right">
+        <span class="osd-alert-blink">[ ERR ]</span>
+        <span class="osd-date-stamp">JUL 04 1996</span>
+      </div>
+    </div>
+
+    <!-- Center Stage: Massive Corrupted Casualty Dossier -->
+    <div class="osd-center-stage death-center-stage">
+      <div class="death-title-wrap">
+        <h1 class="death-massive-title">SUBJECT DECEASED</h1>
+        <div class="death-subtext">AUDIO-VISUAL FEED SEVERED // FATAL TRAUMA INFLICTED BY ENTITY 0</div>
+      </div>
+
+      <div class="death-telemetry-grid">
+        <div class="death-telemetry-item">
+          <span class="telemetry-label">SUBJECT STATUS</span>
+          <span class="telemetry-value val-kia">K.I.A. (DECEASED)</span>
+        </div>
+        <div class="death-telemetry-item">
+          <span class="telemetry-label">LETHAL THREAT</span>
+          <span class="telemetry-value">The Bacteria (Entity 0)</span>
+        </div>
+        <div class="death-telemetry-item">
+          <span class="telemetry-label">SURVIVAL TIME</span>
+          <span class="telemetry-value val-time" id="death-time-survived">00:00:00</span>
+        </div>
+        <div class="death-telemetry-item">
+          <span class="telemetry-label">INCIDENT ZONE</span>
+          <span class="telemetry-value">Level 0 // The Lobby</span>
+        </div>
+      </div>
+
+      <div class="death-advisory-box">
+        <span class="advisory-tag">ASYNC SECURITY ADVISORY:</span>
+        Camcorder destroyed by catastrophic blunt force trauma. The Bacteria exhibits predatory ambush behaviors around blind corners and cannot be neutralized by conventional weaponry.
+      </div>
+    </div>
+
+    <!-- Bottom Center: Borderless Flashing Text Prompts -->
+    <div class="osd-bottom-bar death-bottom-bar">
+      <div class="flashing-prompts-group">
+        <div id="btn-death-retry" class="flashing-osd-prompt prompt-primary" role="button" tabindex="0">
+          <span class="prompt-bracket">[</span> PRESS SPACE TO REWIND TAPE <span class="prompt-bracket">]</span>
+        </div>
+        <div id="btn-death-menu" class="flashing-osd-prompt prompt-secondary" role="button" tabindex="0">
+          <span class="prompt-bracket">[</span> PRESS ESC FOR MAIN MENU <span class="prompt-bracket">]</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

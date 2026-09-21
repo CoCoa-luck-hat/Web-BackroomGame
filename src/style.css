@@ -1,0 +1,1051 @@
+/* ==========================================================================
+   THE BACKROOMS: CINEMATIC FOUND FOOTAGE IMMERSION
+   Clean, authentic, atmospheric aesthetic without gamey clutter.
+   ========================================================================== */
+
+:root {
+  --font-mono: 'Share Tech Mono', monospace;
+  --font-ui: 'Inter', sans-serif;
+  --font-thai: 'Prompt', 'Kanit', sans-serif;
+
+  --color-vhs-white: #e2e8f0;
+  --color-vhs-red: #ef4444;
+  --color-vhs-green: #22c55e;
+  --color-vcr-blue: #000bb5;
+  --color-bg-dark: #000000;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--color-bg-dark);
+  color: var(--color-vhs-white);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 3D Canvas */
+#webgl-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block;
+  z-index: 1;
+}
+
+/* VHS Screen Overlays (Scanlines, Noise, Vignette) */
+#vhs-screen-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 10;
+  overflow: hidden;
+}
+
+.vhs-scanlines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    rgba(0, 0, 0, 0) 50%, 
+    rgba(0, 0, 0, 0.22) 50%
+  );
+  background-size: 100% 4px;
+  opacity: 0.55;
+}
+
+.vhs-noise {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 0);
+  background-size: 4px 4px;
+  opacity: 0.2;
+  animation: noiseJitter 0.2s steps(4) infinite;
+}
+
+@keyframes noiseJitter {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-2%, 1%); }
+  50% { transform: translate(1%, -2%); }
+  75% { transform: translate(-1%, -1%); }
+  100% { transform: translate(2%, 2%); }
+}
+
+.vhs-vignette {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.8);
+}
+
+/* Fullscreen Blinding White Flash for No-clip Warp */
+.white-flash {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #ffffff;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.05s ease-out;
+}
+
+.white-flash.active {
+  opacity: 1;
+}
+
+.white-flash.fading {
+  opacity: 0;
+  transition: opacity 1.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==========================================================================
+   Pure Diegetic Camcorder HUD (Corner Telemetry Only)
+   ========================================================================== */
+#camcorder-hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 20;
+  padding: 2.2rem 3rem;
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+  transition: opacity 0.3s ease;
+}
+
+#camcorder-hud.hidden {
+  opacity: 0;
+  display: none;
+}
+
+.hud-top-left {
+  position: absolute;
+  top: 2.2rem;
+  left: 3rem;
+}
+
+.hud-rec {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.rec-dot {
+  width: 12px;
+  height: 12px;
+  background-color: var(--color-vhs-red);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--color-vhs-red);
+  animation: blinkRed 1s steps(2, start) infinite;
+}
+
+@keyframes blinkRed {
+  to { visibility: hidden; }
+}
+
+.rec-speed {
+  font-size: 0.85rem;
+  color: #999;
+  border: 1px solid #555;
+  padding: 0.1rem 0.3rem;
+  border-radius: 2px;
+}
+
+.hud-top-right {
+  position: absolute;
+  top: 2.2rem;
+  right: 3rem;
+}
+
+.hud-battery {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #bbb;
+  font-size: 0.95rem;
+}
+
+.battery-icon {
+  width: 32px;
+  height: 16px;
+  border: 1.5px solid #bbb;
+  border-radius: 2px;
+  padding: 2px;
+  position: relative;
+}
+
+.battery-icon::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: 3px;
+  width: 2px;
+  height: 6px;
+  background: #bbb;
+}
+
+.battery-level {
+  width: 85%;
+  height: 100%;
+  background-color: var(--color-vhs-green);
+  box-shadow: 0 0 4px var(--color-vhs-green);
+  transition: width 0.5s ease;
+}
+
+.hud-bottom-right {
+  position: absolute;
+  bottom: 2.2rem;
+  right: 3rem;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.hud-timecode {
+  font-size: 1.35rem;
+  color: #ffffff;
+}
+
+.hud-date {
+  font-size: 0.95rem;
+  color: #aaa;
+}
+
+/* Danger Vignette */
+.danger-vignette {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  box-shadow: inset 0 0 120px rgba(255, 0, 0, 0);
+  transition: box-shadow 0.3s ease;
+  z-index: 15;
+}
+
+.danger-vignette.active {
+  box-shadow: inset 0 0 140px rgba(255, 0, 0, 0.75);
+  animation: pulseDanger 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes pulseDanger {
+  from { box-shadow: inset 0 0 80px rgba(255, 0, 0, 0.5); }
+  to { box-shadow: inset 0 0 160px rgba(255, 0, 0, 0.9); }
+}
+
+/* ==========================================================================
+   1. Minimalist & Raw Intro Screen
+   ========================================================================== */
+.intro-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  cursor: pointer;
+  transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+
+.intro-screen.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.intro-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6rem;
+  max-width: 700px;
+  padding: 2rem;
+}
+
+.intro-tag {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.25em;
+  color: #64748b;
+}
+
+.intro-title {
+  font-family: var(--font-mono);
+  font-size: clamp(2.5rem, 6vw, 4.2rem);
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: #f8fafc;
+  text-shadow: 0 0 25px rgba(255, 255, 255, 0.3);
+}
+
+.intro-subtitle {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  letter-spacing: 0.2em;
+  color: #94a3b8;
+}
+
+.intro-prompt {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  color: #f8fafc;
+  letter-spacing: 0.12em;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.8rem 1.8rem;
+  border-radius: 4px;
+  animation: pulsePrompt 1.8s infinite;
+}
+
+@keyframes pulsePrompt {
+  0%, 100% { opacity: 0.9; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.99); }
+}
+
+.prompt-cursor {
+  color: #22c55e;
+}
+
+.intro-hints {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1.5rem;
+  font-family: var(--font-thai);
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+/* ==========================================================================
+   2. Game Over: Tape Rewind
+   ========================================================================== */
+.rewind-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: var(--color-vcr-blue);
+  z-index: 90;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: var(--font-mono);
+}
+
+.rewind-screen.hidden {
+  display: none;
+}
+
+.rewind-noise {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(rgba(255, 255, 255, 0.08) 50%, transparent 50%);
+  background-size: 100% 6px;
+  pointer-events: none;
+}
+
+.rewind-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.vcr-blue-header {
+  font-size: 2rem;
+  color: #ffffff;
+  letter-spacing: 0.2em;
+  animation: blinkBlue 0.8s infinite;
+}
+
+@keyframes blinkBlue {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.lost-title {
+  font-size: 3rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: #ff3333;
+  text-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
+}
+
+.rewind-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 1.2rem;
+  color: #ffffff;
+  letter-spacing: 0.1em;
+}
+
+.rewind-arrows {
+  color: #22c55e;
+}
+
+.rewind-meter {
+  width: 360px;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid #ffffff;
+  border-radius: 2px;
+  margin: 0.8rem auto 0;
+  overflow: hidden;
+}
+
+.rewind-bar {
+  width: 0%;
+  height: 100%;
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+  transition: width 0.1s linear;
+}
+
+/* ==========================================================================
+   3. Pause Overlay (ESC)
+   ========================================================================== */
+.pause-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 60;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.pause-overlay.hidden {
+  display: none;
+}
+
+.pause-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  text-align: center;
+}
+
+.pause-tag {
+  font-family: var(--font-mono);
+  font-size: 2.2rem;
+  letter-spacing: 0.25em;
+  font-weight: 700;
+  color: #f8fafc;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+}
+
+.pause-prompt {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  color: #94a3b8;
+  letter-spacing: 0.14em;
+  animation: pulsePrompt 2s infinite;
+}
+
+.pause-subtext {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 0.4rem;
+  letter-spacing: 0.08em;
+}
+
+/* ==========================================================================
+   4. Research Dossier / Help Modal & Death Screen (Raw Camcorder OSD)
+   ========================================================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(3, 4, 6, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 120;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem;
+}
+
+.modal-overlay.hidden {
+  display: none !important;
+}
+
+/* ==========================================================================
+   100% FULLSCREEN CORRUPTED CAMCORDER VIEWFINDER (FULL-BLEED FOUND FOOTAGE)
+   Full-screen analog static snow & grain, 4-corner reticles, borderless OSD
+   ========================================================================== */
+.fullscreen-vhs-viewfinder {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2.2rem 3.5rem;
+  overflow: hidden;
+  user-select: none;
+  background: #030406;
+}
+
+.fullscreen-vhs-viewfinder.hidden {
+  display: none !important;
+}
+
+/* Dynamic Fullscreen Analog Static Grain Layer */
+.fullscreen-vhs-grain {
+  position: absolute;
+  top: -30px;
+  left: -30px;
+  right: -30px;
+  bottom: -30px;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='fullscreenNoise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23fullscreenNoise)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0.92;
+  mix-blend-mode: screen;
+  animation: grainBuzz 0.14s steps(4) infinite;
+}
+
+@keyframes grainBuzz {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-8px, 10px); }
+  50% { transform: translate(10px, -7px); }
+  75% { transform: translate(-10px, -9px); }
+  100% { transform: translate(7px, 8px); }
+}
+
+/* Fullscreen Scanlines */
+.fullscreen-scanlines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(rgba(10, 10, 10, 0) 50%, rgba(0, 0, 0, 0.46) 50%);
+  background-size: 100% 3px;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0.8;
+}
+
+/* Fullscreen Edge Vignette */
+.fullscreen-vignette {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  box-shadow: 
+    inset 0 0 120px rgba(0, 0, 0, 0.98),
+    inset 0 0 40px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+  z-index: 6;
+}
+
+/* 4 Viewfinder Corner Reticles (┌ ┐ └ ┘) */
+.osd-corner {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 12;
+  opacity: 0.7;
+}
+
+.osd-corner-tl { top: 1.5rem; left: 1.8rem; }
+.osd-corner-tr { top: 1.5rem; right: 1.8rem; }
+.osd-corner-bl { bottom: 1.5rem; left: 1.8rem; }
+.osd-corner-br { bottom: 1.5rem; right: 1.8rem; }
+
+/* Top OSD Header Bar */
+.osd-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 10;
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.osd-header-left, .osd-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.osd-pipe {
+  opacity: 0.4;
+}
+
+.osd-tape-state {
+  animation: osdFlash 1.2s infinite;
+}
+
+@keyframes osdFlash {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.3; }
+}
+
+.osd-alert-blink {
+  border: 1px solid currentColor;
+  padding: 0.05rem 0.4rem;
+  border-radius: 2px;
+  font-size: 0.78rem;
+  animation: osdFlash 0.8s infinite;
+}
+
+.osd-mode-badge {
+  border: 1px solid currentColor;
+  padding: 0.05rem 0.45rem;
+  border-radius: 2px;
+  font-size: 0.78rem;
+}
+
+/* Center Stage Content Container */
+.osd-center-stage {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 960px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+  padding: 1rem 0;
+}
+
+/* Bottom Bar */
+.osd-bottom-bar {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-top: 0.8rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+/* Flashing Borderless Text Prompts */
+.flashing-prompts-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 0 auto;
+}
+
+.flashing-osd-prompt {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  padding: 0.3rem 0.8rem;
+  transition: all 0.15s ease;
+  animation: promptSlowBlink 1.4s ease-in-out infinite;
+  text-shadow: 0 0 10px currentColor;
+}
+
+.flashing-osd-prompt:hover {
+  animation: none;
+  opacity: 1 !important;
+  transform: scale(1.05);
+}
+
+.flashing-osd-prompt:active {
+  transform: scale(0.98);
+}
+
+.prompt-bracket {
+  opacity: 0.75;
+  margin: 0 0.15rem;
+}
+
+@keyframes promptSlowBlink {
+  0%, 100% { opacity: 0.95; }
+  50% { opacity: 0.38; }
+}
+
+/* ==========================================================================
+   DEATH SCREEN FULLSCREEN THEME (Dried-Blood Rust Crimson)
+   ========================================================================== */
+.fullscreen-death-viewfinder {
+  color: #a84242;
+}
+
+.fullscreen-death-viewfinder .osd-corner {
+  color: #8c3232;
+}
+
+.fullscreen-death-viewfinder .osd-danger-header {
+  color: #b54545;
+  border-bottom-color: rgba(140, 50, 50, 0.35);
+}
+
+.death-title-wrap {
+  text-align: center;
+}
+
+.death-massive-title {
+  font-family: var(--font-mono);
+  font-size: 3.4rem;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  color: #c93636;
+  text-shadow: 
+    0 0 20px rgba(201, 54, 54, 0.6),
+    0 0 40px rgba(160, 30, 30, 0.3);
+  margin-bottom: 0.4rem;
+  animation: glitchWireText 2.5s infinite ease-in-out;
+}
+
+.death-subtext {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  letter-spacing: 0.12em;
+  color: #8c4e4e;
+}
+
+.death-telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  background: rgba(18, 5, 5, 0.75);
+  padding: 1.1rem 1.4rem;
+  border: 1px solid rgba(110, 36, 36, 0.6);
+  border-radius: 4px;
+}
+
+.death-telemetry-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border-left: 2px solid #8c2e2e;
+  padding-left: 0.75rem;
+}
+
+.telemetry-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: #8c4e4e;
+  letter-spacing: 0.1em;
+}
+
+.telemetry-value {
+  font-size: 0.96rem;
+  color: #d19f9f;
+}
+
+.telemetry-value.val-kia {
+  color: #e04343;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.telemetry-value.val-time {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  color: #88b0cc;
+  letter-spacing: 0.08em;
+}
+
+.death-advisory-box {
+  background: rgba(18, 5, 5, 0.65);
+  border: 1px dashed rgba(140, 40, 40, 0.55);
+  padding: 1rem 1.3rem;
+  border-radius: 4px;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: #ba8484;
+}
+
+.advisory-tag {
+  color: #e59f9f;
+  font-weight: 700;
+  margin-right: 0.4rem;
+}
+
+.death-bottom-bar {
+  border-top-color: rgba(140, 50, 50, 0.35);
+}
+
+.fullscreen-death-viewfinder .prompt-primary {
+  color: #e54b4b;
+  font-size: 1.25rem;
+}
+
+.fullscreen-death-viewfinder .prompt-secondary {
+  color: #8c5252;
+  font-size: 0.95rem;
+}
+
+.fullscreen-death-viewfinder .prompt-secondary:hover {
+  color: #cf8484;
+}
+
+/* ==========================================================================
+   HELP SCREEN FULLSCREEN THEME (Surveillance Moss Green)
+   ========================================================================== */
+.fullscreen-help-viewfinder {
+  color: #729679;
+}
+
+.fullscreen-help-viewfinder .osd-corner {
+  color: #4a6b50;
+}
+
+.fullscreen-help-viewfinder .help-header-bar {
+  color: #82a88a;
+  border-bottom-color: rgba(50, 90, 60, 0.35);
+}
+
+.help-center-stage {
+  gap: 1.8rem;
+}
+
+.help-section-title {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #92b899;
+  margin-bottom: 0.5rem;
+}
+
+.help-desc {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #729679;
+  margin-bottom: 0.8rem;
+}
+
+.help-protocol-box {
+  background: rgba(6, 18, 10, 0.7);
+  border: 1px dashed rgba(60, 110, 75, 0.6);
+  padding: 1rem 1.3rem;
+  border-radius: 4px;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: #9ac2a1;
+}
+
+.help-protocol-box strong {
+  color: #bde0c4;
+}
+
+.help-controls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  background: rgba(6, 18, 10, 0.65);
+  border: 1px solid rgba(45, 85, 55, 0.5);
+  padding: 1rem 1.3rem;
+  border-radius: 4px;
+}
+
+.help-ctrl-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.88rem;
+}
+
+.ctrl-key {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #b0d6b8;
+  background: rgba(14, 34, 20, 0.8);
+  border: 1px solid #42704c;
+  padding: 0.2rem 0.55rem;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.ctrl-label {
+  color: #7e9e84;
+}
+
+.help-bottom-bar {
+  border-top-color: rgba(50, 90, 60, 0.35);
+  align-items: center;
+}
+
+.help-bottom-left-dummy {
+  width: 260px;
+}
+
+.fullscreen-help-viewfinder .prompt-resume {
+  color: #92b899;
+  font-size: 1.15rem;
+}
+
+.fullscreen-help-viewfinder .prompt-resume:hover {
+  color: #c4ebd0;
+}
+
+/* Bottom-Right OSD Sensitivity Calibration Box */
+.osd-settings-box {
+  width: 260px;
+  background: rgba(6, 18, 10, 0.75);
+  border: 1px solid rgba(45, 85, 55, 0.6);
+  border-radius: 4px;
+  padding: 0.6rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.settings-title {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #6d8e74;
+}
+
+.settings-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.sens-scale-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: #55735c;
+}
+
+.settings-slider-row input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 4px;
+  background: #101c13;
+  border: 1px solid #233d28;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.settings-slider-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: #729679;
+  border: 1px solid #a4c7ac;
+  cursor: pointer;
+}
+
+.settings-val-badge {
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #b0d6b8;
+  border: 1px solid #3d6645;
+  background: rgba(14, 34, 20, 0.7);
+  padding: 0.05rem 0.35rem;
+  border-radius: 2px;
+  min-width: 32px;
+  text-align: center;
+}
+
+/* Responsive Mobile / Tablet */
+@media (max-width: 900px) {
+  .fullscreen-vhs-viewfinder {
+    padding: 1.5rem 1.8rem;
+  }
+
+  .death-massive-title {
+    font-size: 2.2rem;
+  }
+
+  .death-telemetry-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .help-bottom-bar {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .help-bottom-left-dummy {
+    display: none;
+  }
+
+  .osd-settings-box {
+    width: 100%;
+    max-width: 320px;
+  }
+}
