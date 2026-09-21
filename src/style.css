@@ -1020,24 +1020,365 @@ html, body {
   text-align: center;
 }
 
-/* Responsive Mobile / Tablet */
-@media (max-width: 900px) {
+/* ==========================================================================
+   Mobile Support: Orientation Warning, Touch HUD & Landscape Responsiveness
+   ========================================================================== */
+
+/* 1. Mobile Portrait Orientation Warning Overlay */
+.mobile-rotate-prompt {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999;
+  background: #040507;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  box-sizing: border-box;
+}
+
+.mobile-rotate-prompt.hidden {
+  display: none !important;
+}
+
+/* Automatically show orientation warning on mobile portrait */
+@media screen and (orientation: portrait) and (max-width: 950px) {
+  .mobile-rotate-prompt:not(.force-hide) {
+    display: flex !important;
+  }
+}
+
+.rotate-box {
+  border: 1px solid rgba(255, 220, 140, 0.4);
+  background: rgba(12, 16, 14, 0.9);
+  padding: 2.5rem 2rem;
+  text-align: center;
+  max-width: 340px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.95), inset 0 0 20px rgba(255, 220, 140, 0.05);
+}
+
+.rotate-icon-wrap {
+  position: relative;
+  font-size: 3.2rem;
+  line-height: 1;
+  margin-bottom: 1.2rem;
+  display: inline-block;
+}
+
+.rotate-icon {
+  display: inline-block;
+  animation: phoneRock 2.4s ease-in-out infinite;
+}
+
+.rotate-arrow {
+  position: absolute;
+  top: -6px;
+  right: -14px;
+  font-size: 2rem;
+  color: #ffd679;
+  animation: spinCw 3s linear infinite;
+}
+
+@keyframes phoneRock {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-90deg); }
+}
+
+@keyframes spinCw {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.rotate-title {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #ffd679;
+  margin-bottom: 0.6rem;
+  text-shadow: 0 0 8px rgba(255, 214, 121, 0.5);
+}
+
+.rotate-subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  letter-spacing: 0.08em;
+  color: #92a496;
+}
+
+/* 2. Mobile Touch Controls HUD */
+.mobile-touch-controls {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 40;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.mobile-touch-controls.hidden {
+  display: none !important;
+}
+
+/* Touch Zones */
+.touch-zone-move {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 50vw;
+  height: 100vh;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.touch-zone-look {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 50vw;
+  height: 100vh;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+/* Dynamic Floating Joystick */
+.touch-joystick-base {
+  position: absolute;
+  width: 116px;
+  height: 116px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 230, 160, 0.45);
+  background: radial-gradient(circle, rgba(30, 36, 28, 0.45) 0%, rgba(6, 8, 10, 0.75) 100%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow: inset 0 0 15px rgba(255, 230, 160, 0.12), 0 0 20px rgba(0, 0, 0, 0.8);
+  transition: opacity 0.12s ease;
+}
+
+.touch-joystick-base.hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.joystick-ring {
+  position: absolute;
+  inset: 12px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 230, 160, 0.25);
+}
+
+.touch-joystick-nipple {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 240, 200, 0.9) 0%, rgba(210, 175, 110, 0.65) 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 14px rgba(255, 220, 130, 0.65);
+  pointer-events: none;
+}
+
+/* Camcorder Touch Action Buttons */
+.mobile-action-buttons {
+  position: absolute;
+  right: 1.6rem;
+  bottom: 1.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  pointer-events: auto;
+  z-index: 45;
+}
+
+.touch-osd-btn {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgba(240, 245, 235, 0.88);
+  background: rgba(10, 14, 12, 0.65);
+  border: 1px solid rgba(255, 230, 160, 0.35);
+  border-radius: 3px;
+  padding: 0.65rem 1.15rem;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6);
+  transition: all 0.1s ease;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.touch-osd-btn:active,
+.touch-osd-btn.active {
+  background: rgba(255, 220, 120, 0.28);
+  border-color: rgba(255, 240, 180, 0.9);
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(255, 220, 140, 0.5);
+  transform: scale(0.96);
+}
+
+.touch-osd-btn .btn-bracket {
+  color: rgba(255, 230, 160, 0.6);
+}
+
+.touch-osd-btn.btn-menu {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.6rem;
+  bottom: auto;
+}
+
+/* 3. Hints Toggle for Desktop vs Touch */
+.mobile-only-hints {
+  display: none;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .desktop-only-hints {
+    display: none !important;
+  }
+  .mobile-only-hints {
+    display: flex !important;
+  }
+}
+
+/* 4. Responsive Mobile Landscape Overrides (H <= 520px or W <= 950px) */
+@media (max-width: 950px), (max-height: 520px) {
+  /* Common Viewfinder adjustments */
   .fullscreen-vhs-viewfinder {
-    padding: 1.5rem 1.8rem;
+    padding: 0.8rem 1.4rem;
   }
 
+  .osd-corner {
+    font-size: 1.5rem;
+  }
+  .osd-corner-tl { top: 0.8rem; left: 1.2rem; }
+  .osd-corner-tr { top: 0.8rem; right: 1.2rem; }
+  .osd-corner-bl { bottom: 0.8rem; left: 1.2rem; }
+  .osd-corner-br { bottom: 0.8rem; right: 1.2rem; }
+
+  .osd-header-bar {
+    font-size: 0.78rem;
+    padding-bottom: 0.4rem;
+  }
+
+  /* Intro Screen */
+  .intro-title {
+    font-size: clamp(2rem, 8vw, 3.2rem);
+  }
+  .intro-subtitle {
+    font-size: 0.85rem;
+  }
+  .intro-prompt {
+    font-size: 0.85rem;
+    margin: 1.2rem 0;
+  }
+  .intro-hints {
+    font-size: 0.7rem;
+    gap: 0.6rem;
+  }
+
+  /* Death Screen */
   .death-massive-title {
-    font-size: 2.2rem;
+    font-size: clamp(1.6rem, 5vw, 2.4rem);
+    letter-spacing: 0.12em;
+    margin-bottom: 0.2rem;
+  }
+
+  .death-subtext {
+    font-size: 0.68rem;
+    margin-bottom: 0.6rem;
   }
 
   .death-telemetry-grid {
     grid-template-columns: 1fr 1fr;
+    gap: 0.4rem 0.8rem;
+    max-width: 580px;
+    margin-bottom: 0.6rem;
+  }
+
+  .death-telemetry-item {
+    padding: 0.35rem 0.6rem;
+  }
+
+  .telemetry-label {
+    font-size: 0.62rem;
+  }
+
+  .telemetry-value {
+    font-size: 0.8rem;
+  }
+
+  .death-advisory-box {
+    font-size: 0.68rem;
+    line-height: 1.35;
+    padding: 0.4rem 0.7rem;
+    max-width: 580px;
+    margin-bottom: 0.6rem;
+  }
+
+  .flashing-osd-prompt {
+    font-size: 0.82rem;
+    padding: 0.35rem 0.8rem;
+  }
+
+  /* Help Dossier Screen */
+  .help-center-stage {
+    gap: 0.8rem;
+    max-height: 65vh;
+    overflow-y: auto;
+    padding: 0.4rem;
+  }
+
+  .help-section-title {
+    font-size: 0.75rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .help-desc, .help-protocol-box {
+    font-size: 0.72rem;
+    line-height: 1.35;
+  }
+
+  .help-protocol-box {
+    padding: 0.4rem 0.6rem;
+    margin-top: 0.3rem;
+  }
+
+  .help-controls-grid {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 0.4rem;
+  }
+
+  .help-ctrl-card {
+    padding: 0.35rem 0.5rem;
+  }
+
+  .ctrl-key {
+    font-size: 0.72rem;
+  }
+
+  .ctrl-label {
+    font-size: 0.65rem;
   }
 
   .help-bottom-bar {
-    flex-direction: column;
-    gap: 1rem;
+    flex-direction: row;
+    justify-content: space-between;
     align-items: center;
+    gap: 0.5rem;
+    padding-top: 0.4rem;
   }
 
   .help-bottom-left-dummy {
@@ -1045,7 +1386,17 @@ html, body {
   }
 
   .osd-settings-box {
-    width: 100%;
-    max-width: 320px;
+    max-width: 260px;
+    padding: 0.35rem 0.6rem;
+  }
+
+  .settings-title {
+    font-size: 0.65rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .settings-val-badge {
+    font-size: 0.72rem;
+    min-width: 26px;
   }
 }

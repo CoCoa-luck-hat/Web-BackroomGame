@@ -27,6 +27,7 @@ class BackroomsApp {
     this.initUIEvents();
 
     window.addEventListener('resize', () => this.onResize());
+    window.addEventListener('orientationchange', () => setTimeout(() => this.onResize(), 150));
     this.animate();
   }
 
@@ -49,7 +50,7 @@ class BackroomsApp {
       powerPreference: 'high-performance'
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -57,9 +58,10 @@ class BackroomsApp {
   }
 
   initPostProcessing() {
+    const pr = Math.min(window.devicePixelRatio, 1.75);
     this.renderTarget = new THREE.WebGLRenderTarget(
-      window.innerWidth * Math.min(window.devicePixelRatio, 2),
-      window.innerHeight * Math.min(window.devicePixelRatio, 2),
+      window.innerWidth * pr,
+      window.innerHeight * pr,
       {
         minFilter: THREE.LinearFilter,
         magFilter: THREE.LinearFilter,
@@ -354,7 +356,7 @@ class BackroomsApp {
   onResize() {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    const pr = Math.min(window.devicePixelRatio, 2);
+    const pr = Math.min(window.devicePixelRatio, 1.75);
 
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();

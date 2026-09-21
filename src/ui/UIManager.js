@@ -31,6 +31,12 @@ export class UIManager {
     this.btnDeathRetry = document.getElementById('btn-death-retry');
     this.btnDeathMenu = document.getElementById('btn-death-menu');
 
+    // Mobile Elements & Touch Detection
+    this.isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
+    this.mobileTouchControls = document.getElementById('mobile-touch-controls');
+    this.btnTouchMenu = document.getElementById('btn-touch-menu');
+    this.mobileRotatePrompt = document.getElementById('mobile-rotate-prompt');
+
     // Sensitivity sliders
     this.pauseSensSlider = document.getElementById('pause-sens-slider');
     this.pauseSensVal = document.getElementById('pause-sens-val');
@@ -46,7 +52,42 @@ export class UIManager {
     this.onRestartCallback = null;
     this.onMainMenuCallback = null;
 
+    this.applyMobileAdaptations();
     this.initListeners();
+    this.initOrientationListener();
+  }
+
+  applyMobileAdaptations() {
+    if (!this.isTouchDevice) return;
+
+    const promptText = document.getElementById('intro-prompt-text');
+    if (promptText) promptText.textContent = 'TAP ANYWHERE TO ENTER FOOTAGE';
+
+    if (this.btnDeathRetry) {
+      this.btnDeathRetry.innerHTML = '<span class="prompt-bracket">[</span> TAP TO REWIND TAPE <span class="prompt-bracket">]</span>';
+    }
+    if (this.btnDeathMenu) {
+      this.btnDeathMenu.innerHTML = '<span class="prompt-bracket">[</span> TAP FOR MAIN MENU <span class="prompt-bracket">]</span>';
+    }
+    if (this.btnResumeGame) {
+      this.btnResumeGame.innerHTML = '<span class="prompt-bracket">[</span> TAP TO RESUME FOOTAGE <span class="prompt-bracket">]</span>';
+    }
+  }
+
+  initOrientationListener() {
+    if (!this.isTouchDevice) return;
+    const checkOrientation = () => {
+      if (!this.mobileRotatePrompt) return;
+      const isPortrait = window.innerHeight > window.innerWidth;
+      if (isPortrait && window.innerWidth <= 950) {
+        this.mobileRotatePrompt.classList.remove('hidden');
+      } else {
+        this.mobileRotatePrompt.classList.add('hidden');
+      }
+    };
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', () => setTimeout(checkOrientation, 150));
+    checkOrientation();
   }
 
   setControls(controls) {
@@ -82,9 +123,18 @@ export class UIManager {
   }
 
   initListeners() {
-    // Click anywhere on intro screen to start
+    // Click/tap anywhere on intro screen to start
     if (this.introScreen) {
       this.introScreen.addEventListener('click', () => {
+        // Auto-request fullscreen on mobile touch devices
+        if (this.isTouchDevice && !document.fullscreenElement) {
+          const docEl = document.documentElement;
+          if (docEl.requestFullscreen) {
+            docEl.requestFullscreen().catch(() => {});
+          } else if (docEl.webkitRequestFullscreen) {
+            docEl.webkitRequestFullscreen().catch(() => {});
+          }
+        }
         if (this.onStartGameCallback) {
           this.onStartGameCallback();
         }
@@ -102,18 +152,24 @@ export class UIManager {
       });
     }
 
-    // Help modal toggles (ESC or H)
+    // Help modal toggles (ESC or H or mobile menu button)
     const openModal = () => {
       if (this.soundManager?.playVcrButtonClick) this.soundManager.playVcrButtonClick();
       this.helpModal.classList.remove('hidden');
+      if (this.isTouchDevice && this.mobileTouchControls) {
+        this.mobileTouchControls.classList.add('hidden');
+      }
       const pauseOverlay = document.getElementById('pause-overlay');
       if (pauseOverlay) pauseOverlay.classList.add('hidden');
-      document.exitPointerLock();
+      if (!this.isTouchDevice) document.exitPointerLock();
     };
 
     const closeModal = () => {
       if (this.soundManager?.playVcrButtonClick) this.soundManager.playVcrButtonClick();
       this.helpModal.classList.add('hidden');
+      if (this.isTouchDevice && this.mobileTouchControls && !this.camcorderHud.classList.contains('hidden')) {
+        this.mobileTouchControls.classList.remove('hidden');
+      }
       if (this.onResumeGameCallback) {
         this.onResumeGameCallback();
       }
@@ -121,6 +177,28 @@ export class UIManager {
 
     if (this.btnCloseModal) this.btnCloseModal.addEventListener('click', closeModal);
     if (this.btnResumeGame) this.btnResumeGame.addEventListener('click', closeModal);
+
+    // Mobile on-screen Menu button
+    if (this.btnTouchMenu) {
+      this.btnTouchMenu.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (this.helpModal.classList.contains('hidden')) {
+          openModal();
+        } else {
+          closeModal();
+        }
+      }, { passive: false });
+      this.btnTouchMenu.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (this.helpModal.classList.contains('hidden')) {
+          openModal();
+        } else {
+          closeModal();
+        }
+      });
+    }
 
     // Keyboard shortcut [H] or [Escape] for help / [Space] or [Escape] for death screen
     window.addEventListener('keydown', (e) => {
@@ -176,6 +254,9 @@ export class UIManager {
     this.introScreen.classList.add('hidden');
     this.camcorderHud.classList.remove('hidden');
     if (this.deathScreen) this.deathScreen.classList.add('hidden');
+    if (this.isTouchDevice && this.mobileTouchControls) {
+      this.mobileTouchControls.classList.remove('hidden');
+    }
   }
 
   /**
@@ -285,6 +366,9 @@ export class UIManager {
     document.exitPointerLock();
     if (this.camcorderHud) this.camcorderHud.classList.add('hidden');
     if (this.dangerVignette) this.dangerVignette.classList.remove('active');
+    if (this.isTouchDevice && this.mobileTouchControls) {
+      this.mobileTouchControls.classList.add('hidden');
+    }
     const pauseOverlay = document.getElementById('pause-overlay');
     if (pauseOverlay) pauseOverlay.classList.add('hidden');
     if (this.helpModal) this.helpModal.classList.add('hidden');
@@ -316,6 +400,9 @@ export class UIManager {
   showIntro() {
     if (this.deathScreen) this.deathScreen.classList.add('hidden');
     if (this.camcorderHud) this.camcorderHud.classList.add('hidden');
+    if (this.isTouchDevice && this.mobileTouchControls) {
+      this.mobileTouchControls.classList.add('hidden');
+    }
     const pauseOverlay = document.getElementById('pause-overlay');
     if (pauseOverlay) pauseOverlay.classList.add('hidden');
     if (this.helpModal) this.helpModal.classList.add('hidden');

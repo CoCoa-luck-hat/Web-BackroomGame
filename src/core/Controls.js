@@ -49,7 +49,22 @@ export class Controls {
     // Standard FPS mouse sensitivity (with localStorage support)
     const savedSens = localStorage.getItem('backrooms_mouse_sensitivity');
     this.mouseSensitivity = savedSens ? parseFloat(savedSens) : 0.0024;
+    this.touchSensitivity = this.mouseSensitivity * 1.5;
     this.justLocked = false;
+
+    // Mobile / Touch Detection & State
+    this.isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
+    this.touchMoveId = null;
+    this.touchMoveOrigin = { x: 0, y: 0 };
+    this.touchVector = { x: 0, y: 0 }; // Normalized [-1, 1]
+    this.touchAutoSprint = false;
+    this.joystickMaxRadius = 46;
+
+    this.touchLookId = null;
+    this.touchLookLast = { x: 0, y: 0 };
+
+    this.joystickBase = null;
+    this.joystickNipple = null;
 
     // Camera sway and bob
     this.bob = new CameraBob();
@@ -63,6 +78,7 @@ export class Controls {
     this.started = false;
 
     this.initListeners();
+    this.initTouchListeners();
     this.initFlashlight();
   }
 
@@ -74,6 +90,7 @@ export class Controls {
     const parsed = parseFloat(value);
     if (!isNaN(parsed) && parsed > 0) {
       this.mouseSensitivity = parsed;
+      this.touchSensitivity = parsed * 1.5;
       try {
         localStorage.setItem('backrooms_mouse_sensitivity', parsed.toString());
       } catch (e) {}
@@ -95,7 +112,7 @@ export class Controls {
       const helpModal = document.getElementById('help-modal');
       const helpOpen = helpModal && !helpModal.classList.contains('hidden');
 
-      if (pauseOverlay && this.started) {
+      if (pauseOverlay && this.started && !this.isTouchDevice) {
         if (!this.isLocked && !helpOpen) {
           pauseOverlay.classList.remove('hidden');
         } else {
@@ -104,8 +121,9 @@ export class Controls {
       }
     });
 
-    // Re-lock pointer on canvas click whenever unlocked
+    // Re-lock pointer on canvas click whenever unlocked (Desktop only)
     this.domElement.addEventListener('click', () => {
+      if (this.isTouchDevice) return;
       const helpModal = document.getElementById('help-modal');
       const helpOpen = helpModal && !helpModal.classList.contains('hidden');
       if (!this.isLocked && this.enabled && this.started && !helpOpen) {
@@ -244,11 +262,184 @@ export class Controls {
   }
 
   lock() {
+    if (this.isTouchDevice) {
+      this.isLocked = true;
+      return;
+    }
     this.domElement.requestPointerLock();
   }
 
   unlock() {
+    if (this.isTouchDevice) {
+      this.isLocked = false;
+      return;
+    }
     document.exitPointerLock();
+  }
+
+  initTouchListeners() {
+    this.joystickBase = document.getElementById('touch-joystick-base');
+    this.joystickNipple = document.getElementById('touch-joystick-nipple');
+    const moveZone = document.getElementById('touch-move-zone');
+    const lookZone = document.getElementById('touch-look-zone');
+    const btnSprint = document.getElementById('btn-touch-sprint');
+    const btnLight = document.getElementById('btn-touch-light');
+
+    // 1. Dynamic Floating Joystick (Left Half Move Zone)
+    if (moveZone && this.joystickBase && this.joystickNipple) {
+      moveZone.addEventListener('touchstart', (e) => {
+        if (!this.enabled) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const touch = e.changedTouches[i];
+          if (this.touchMoveId === null) {
+            this.touchMoveId = touch.identifier;
+            this.touchMoveOrigin = { x: touch.clientX, y: touch.clientY };
+            this.touchVector = { x: 0, y: 0 };
+            this.touchAutoSprint = false;
+
+            // Anchor joystick base directly under thumb
+            this.joystickBase.style.left = `${touch.clientX}px`;
+            this.joystickBase.style.top = `${touch.clientY}px`;
+            this.joystickNipple.style.transform = 'translate(-50%, -50%)';
+            this.joystickBase.classList.remove('hidden');
+            break;
+          }
+        }
+      }, { passive: false });
+
+      const handleMoveTouch = (e) => {
+        if (!this.enabled || this.touchMoveId === null) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const touch = e.changedTouches[i];
+          if (touch.identifier === this.touchMoveId) {
+            e.preventDefault();
+            const dx = touch.clientX - this.touchMoveOrigin.x;
+            const dy = touch.clientY - this.touchMoveOrigin.y;
+            const dist = Math.hypot(dx, dy);
+            const clampedDist = Math.min(dist, this.joystickMaxRadius);
+            const angle = Math.atan2(dy, dx);
+
+            const nippleX = Math.cos(angle) * clampedDist;
+            const nippleY = Math.sin(angle) * clampedDist;
+
+            this.joystickNipple.style.transform = `translate(calc(-50% + ${nippleX}px), calc(-50% + ${nippleY}px))`;
+
+            // Normalized analog vector: X = strafe [-1, 1], Y = forward/back [-1, 1]
+            this.touchVector.x = nippleX / this.joystickMaxRadius;
+            this.touchVector.y = -nippleY / this.joystickMaxRadius;
+
+            // Auto-sprint when pushed near maximum radius forward
+            if (dist > this.joystickMaxRadius * 0.85 && this.touchVector.y > 0.55) {
+              this.touchAutoSprint = true;
+            } else {
+              this.touchAutoSprint = false;
+            }
+            break;
+          }
+        }
+      };
+
+      const handleEndTouch = (e) => {
+        if (this.touchMoveId === null) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const touch = e.changedTouches[i];
+          if (touch.identifier === this.touchMoveId) {
+            this.touchMoveId = null;
+            this.touchVector = { x: 0, y: 0 };
+            this.touchAutoSprint = false;
+            this.joystickBase.classList.add('hidden');
+            this.joystickNipple.style.transform = 'translate(-50%, -50%)';
+            break;
+          }
+        }
+      };
+
+      moveZone.addEventListener('touchmove', handleMoveTouch, { passive: false });
+      moveZone.addEventListener('touchend', handleEndTouch, { passive: false });
+      moveZone.addEventListener('touchcancel', handleEndTouch, { passive: false });
+      window.addEventListener('touchcancel', handleEndTouch, { passive: false });
+    }
+
+    // 2. Swipe-to-Look (Right Half Look Zone)
+    if (lookZone) {
+      lookZone.addEventListener('touchstart', (e) => {
+        if (!this.enabled) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const touch = e.changedTouches[i];
+          if (this.touchLookId === null) {
+            this.touchLookId = touch.identifier;
+            this.touchLookLast = { x: touch.clientX, y: touch.clientY };
+            break;
+          }
+        }
+      }, { passive: false });
+
+      lookZone.addEventListener('touchmove', (e) => {
+        if (!this.enabled || this.touchLookId === null) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const touch = e.changedTouches[i];
+          if (touch.identifier === this.touchLookId) {
+            e.preventDefault();
+            const dx = touch.clientX - this.touchLookLast.x;
+            const dy = touch.clientY - this.touchLookLast.y;
+            this.touchLookLast = { x: touch.clientX, y: touch.clientY };
+
+            // Rotate camera (1:1 responsive touch look)
+            this.yawObject.rotation.y -= dx * this.touchSensitivity;
+            this.pitchObject.rotation.x -= dy * this.touchSensitivity;
+
+            // Clamp vertical pitch [-85 deg, +85 deg]
+            const maxPitch = Math.PI / 2 - 0.08;
+            this.pitchObject.rotation.x = Math.max(-maxPitch, Math.min(maxPitch, this.pitchObject.rotation.x));
+            break;
+          }
+        }
+      }, { passive: false });
+
+      const handleEndLook = (e) => {
+        if (this.touchLookId === null) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const touch = e.changedTouches[i];
+          if (touch.identifier === this.touchLookId) {
+            this.touchLookId = null;
+            break;
+          }
+        }
+      };
+
+      lookZone.addEventListener('touchend', handleEndLook, { passive: false });
+      lookZone.addEventListener('touchcancel', handleEndLook, { passive: false });
+    }
+
+    // 3. Camcorder Action Buttons
+    if (btnSprint) {
+      btnSprint.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.keys.sprint = true;
+        btnSprint.classList.add('active');
+      }, { passive: false });
+
+      const releaseSprint = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.keys.sprint = false;
+        btnSprint.classList.remove('active');
+      };
+
+      btnSprint.addEventListener('touchend', releaseSprint, { passive: false });
+      btnSprint.addEventListener('touchcancel', releaseSprint, { passive: false });
+    }
+
+    if (btnLight) {
+      btnLight.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.toggleFlashlight();
+        btnLight.classList.add('active');
+        setTimeout(() => btnLight.classList.remove('active'), 150);
+      }, { passive: false });
+    }
   }
 
   setPosition(pos) {
@@ -264,15 +455,18 @@ export class Controls {
   }
 
   update(delta) {
-    if (!this.enabled || !this.isLocked) {
+    if (!this.enabled || (!this.isLocked && !this.isTouchDevice)) {
       this.currentSpeed = 0;
       return;
     }
 
-    const isMoving = this.keys.forward || this.keys.backward || this.keys.left || this.keys.right;
+    const isKeyMoving = this.keys.forward || this.keys.backward || this.keys.left || this.keys.right;
+    const isTouchMoving = this.touchMoveId !== null && (Math.abs(this.touchVector.x) > 0.05 || Math.abs(this.touchVector.y) > 0.05);
+    const isMoving = isKeyMoving || isTouchMoving;
 
     // Stamina
-    let isSprinting = this.keys.sprint && isMoving && this.stamina > 5;
+    const sprintRequested = this.keys.sprint || this.touchAutoSprint;
+    let isSprinting = sprintRequested && isMoving && this.stamina > 5;
     if (isSprinting) {
       this.stamina = Math.max(0, this.stamina - this.staminaDrainRate * delta);
       if (this.stamina === 0) isSprinting = false;
@@ -294,6 +488,12 @@ export class Controls {
       if (this.keys.backward) displacement.sub(forward);
       if (this.keys.right) displacement.add(right);
       if (this.keys.left) displacement.sub(right);
+
+      // Add touch joystick continuous analog displacement
+      if (isTouchMoving) {
+        displacement.addScaledVector(forward, this.touchVector.y);
+        displacement.addScaledVector(right, this.touchVector.x);
+      }
 
       if (displacement.lengthSq() > 0) {
         displacement.normalize();

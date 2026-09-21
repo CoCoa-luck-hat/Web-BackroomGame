@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>THE BACKROOMS: LEVEL 0 // ARCHIVAL FOOTAGE</title>
   <meta name="description" content="Explore The Backrooms 3D through an authentic 90s VHS camcorder perspective. Atmospheric horror and pure immersion.">
   
@@ -14,6 +14,18 @@
   <link rel="stylesheet" href="/src/style.css">
 </head>
 <body>
+  <!-- Mobile Landscape Orientation Warning Overlay -->
+  <div id="mobile-rotate-prompt" class="mobile-rotate-prompt hidden">
+    <div class="rotate-box">
+      <div class="rotate-icon-wrap">
+        <span class="rotate-icon">📱</span>
+        <span class="rotate-arrow">⟲</span>
+      </div>
+      <div class="rotate-title">PLEASE ROTATE DEVICE</div>
+      <div class="rotate-subtitle">ASYNC CAMCORDER SENSOR // HORIZONTAL LANDSCAPE REQUIRED</div>
+    </div>
+  </div>
+
   <!-- WebGL 3D Canvas -->
   <canvas id="webgl-canvas"></canvas>
 
@@ -58,6 +70,33 @@
     <div id="danger-vignette" class="danger-vignette"></div>
   </div>
 
+  <!-- Mobile Touch Controls HUD -->
+  <div id="mobile-touch-controls" class="mobile-touch-controls hidden">
+    <!-- Left Move Touch Zone (Dynamic Floating Joystick) -->
+    <div id="touch-move-zone" class="touch-zone-move">
+      <div id="touch-joystick-base" class="touch-joystick-base hidden">
+        <div id="touch-joystick-nipple" class="touch-joystick-nipple"></div>
+        <div class="joystick-ring"></div>
+      </div>
+    </div>
+
+    <!-- Right Look Touch Zone (Swipe to Look) -->
+    <div id="touch-look-zone" class="touch-zone-look"></div>
+
+    <!-- Camcorder Touch Action Buttons -->
+    <div class="mobile-action-buttons">
+      <button id="btn-touch-menu" class="touch-osd-btn btn-menu" type="button">
+        <span class="btn-bracket">[</span> ❚❚ MENU <span class="btn-bracket">]</span>
+      </button>
+      <button id="btn-touch-light" class="touch-osd-btn btn-light" type="button">
+        <span class="btn-bracket">[</span> LIGHT <span class="btn-bracket">]</span>
+      </button>
+      <button id="btn-touch-sprint" class="touch-osd-btn btn-sprint" type="button">
+        <span class="btn-bracket">[</span> SPRINT <span class="btn-bracket">]</span>
+      </button>
+    </div>
+  </div>
+
   <!-- 1. Minimalist & Raw Intro Screen: Found Footage Title -->
   <div id="intro-screen" class="intro-screen">
     <div class="intro-content">
@@ -67,10 +106,10 @@
       
       <div class="intro-prompt">
         <span class="prompt-cursor">▶</span>
-        <span class="prompt-text">CLICK ANYWHERE TO ENTER FOOTAGE</span>
+        <span class="prompt-text" id="intro-prompt-text">CLICK OR TAP TO ENTER FOOTAGE</span>
       </div>
 
-      <div class="intro-hints">
+      <div class="intro-hints desktop-only-hints">
         <span>WASD: MOVE</span>
         <span>•</span>
         <span>MOUSE: LOOK (360°)</span>
@@ -80,6 +119,13 @@
         <span>F: FLASHLIGHT</span>
         <span>•</span>
         <span>H / ESC: RESEARCH ARCHIVE</span>
+      </div>
+      <div class="intro-hints mobile-only-hints">
+        <span>LEFT: DRAG TO MOVE</span>
+        <span>•</span>
+        <span>RIGHT: SWIPE TO LOOK</span>
+        <span>•</span>
+        <span>HOLD [SPRINT] TO RUN</span>
       </div>
     </div>
   </div>
